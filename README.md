@@ -41,5 +41,21 @@ but that is not recommended because if you ever run this on a Mac which doesn't 
 
 Because they suck. Growl is 100% better than Mountain Lion's notifications. They're more customizable, they're able to show longer messages, and more apps support it.
 
+## Minor Bug / Limitation ##
+
+I don't usually send `growlnotify` messages via stdin, but it can be done. My script supports that, to a limited degree. If there are no arguments to `growlnotify` then it is assumed that the user intended to send a message to `growlnotify` via stdin, and so it will be passed on that way. However, the actual `growlnotify` also lets you do things like this:
+
+		echo "hello world" | growlnotify -a TextEdit -d HelloWorld -t "The Title Here"
+
+where only the message is sent via stdin and the rest of the arguments are set as usual. My script doesn't support that because I don't want to get into parsing all the args to see if there's an `-m` or `--message` among them, because I never use `growlnotify` that way. 
+
+### License ###
+
+<a rel="license" href="http://creativecommons.org/licenses/by/3.0/deed.en_US"><img alt="Creative Commons License" style="border-width:0" src="cc.png" /></a>
+
+<p><a href='https://github.com/tjluoma/growlnotify'><span xmlns:dct="http://purl.org/dc/terms/" href="http://purl.org/dc/dcmitype/Text" property="dct:title" rel="dct:type">growlnotify</span></a> by <a xmlns:cc="http://creativecommons.org/ns#" href="https://github.com/tjluoma/growlnotify" property="cc:attributionName" rel="cc:attributionURL">TJ Luoma</a> is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/3.0/deed.en_US">Creative Commons Attribution 3.0 Unported License</a>. Based on a work at <a xmlns:dct="http://purl.org/dc/terms/" href="http://growl.info/downloads" rel="dct:source">http://growl.info/downloads</a>. Permissions beyond the scope of this license may be available at <a xmlns:cc="http://creativecommons.org/ns#" href="http://rhymeswithdiploma.com/contact/" rel="cc:morePermissions">http://rhymeswithdiploma.com/contact/</a>.</p>
+
+
+
 [1]: http://growl.info/downloads
 [2]: http://itunes.apple.com/us/app/growl/id467939042?mt=12
