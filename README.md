@@ -32,6 +32,7 @@ You could rename the actual `growlnotify` to something like `growlnotify.orig` a
 	GN='/usr/local/bin/growlnotify'
 
 to
+
 	GN='/usr/local/bin/growlnotify.orig'
 
 but that is not recommended because if you ever run this on a Mac which doesn't have the actual `growlnotify` installed, the installer will overwrite this script.
