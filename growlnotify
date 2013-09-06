@@ -1,0 +1,159 @@
+#!/bin/zsh
+# execute the actual growlnotify and make sure that it works properly
+#
+# From:	Timothy J. Luoma
+# Mail:	luomat at gmail dot com
+# Date:	2013-09-05
+
+NAME="$0:t:r"
+
+	# check to see which version of Mac OS X we are using
+OS_VER=$(sw_vers -productVersion | cut -d . -f 1,2)
+
+if [ "$OS_VER" -lt "10.8" ]
+then
+			# even the `brew` version of `pgrep` doesn't support the same flags, such as -q (IIRC)
+		echo "$0 requires 'pgrep' and 'pkill' which are not available on Mac OS X before 10.8."
+		exit 1
+fi
+
+APP='/Applications/Growl.app'
+
+if [ ! -e "$APP" ]
+then
+
+	echo -n "\n\n\t$NAME: Growl is not installed. Launching Mac App Store so it can be installed.\n\n\tQuit the App Store app to resume: "
+
+	/usr/bin/open -W -n -F -a 'App Store' 'macappstore://itunes.apple.com/us/app/growl/id467939042?mt=12'
+
+fi
+
+GN='/usr/local/bin/growlnotify'
+
+if [ ! -x "${GN}"  ]
+then
+
+		URL=$(curl --fail --silent --location 'http://growl.info/downloads' | fgrep -i growlnotify | tr '"' '\012' | egrep '^http' | sort -u | tail -1)
+
+		if [ "$URL" = "" ]
+		then
+				echo "$NAME: URL is empty for growlnotify"
+				exit 1
+		fi
+
+		cd "${TMPDIR-/tmp/}"
+
+		curl --location --remote-name "$URL"
+
+		FILENAME="$URL:t"
+
+		if [ ! -e "$FILENAME" ]
+		then
+				echo "$NAME: $FILENAME not found"
+				exit 1
+		fi
+
+		PKG_NAME=$(command unzip -l "$FILENAME" | fgrep -i .pkg | awk '{print $NF}')
+
+		command unzip "$FILENAME"
+
+		if [ ! -e "$PKG_NAME" ]
+		then
+				echo "$NAME: No PKG file found at $PKG_NAME"
+				exit 1
+		fi
+
+		if [ "$LAUNCHD" = "yes" ]
+		then
+				open -n -W -F -a Installer "$PKG_NAME"
+
+		elif (( $+commands[pkginstall.sh] ))
+		then
+				pkginstall.sh "$PKG_NAME"
+		else
+				sudo installer -verboseR -pkg "$PKG_NAME" -target / 2>&1
+		fi
+fi
+
+
+#  OK, so if the growlnotify command wasn't found, the above should have
+#  installed it. So if we get here and it still isn't installed, then
+#  something went wrong, so we'll have to give up
+
+if [ ! -x "${GN}" ]
+then
+
+	echo "$NAME: ${GN} not found. Your input could not be delivered:\n$@"
+	exit 1
+
+fi
+
+pgrep -q Growl || open -a Growl || exit 2
+
+MAX_ATTEMPTS="5"
+
+SECONDS_BETWEEN_ATTEMPTS="1"
+
+	# strip away anything that isn't a 0-9 digit
+SECONDS_BETWEEN_ATTEMPTS=$(echo "$SECONDS_BETWEEN_ATTEMPTS" | tr -dc '[0-9]')
+MAX_ATTEMPTS=$(echo "$MAX_ATTEMPTS" | tr -dc '[0-9]')
+
+	# initialize the counter
+COUNT=0
+
+	# NOTE this 'while' loop can be changed to something else
+while [ "$COUNT" -lt "$MAX_ATTEMPTS" ]
+do
+
+		# increment counter (this is why we init to 0 not 1)
+	((COUNT++))
+
+		# check to see if we have exceeded maximum attempts
+	if [ "$COUNT" -gt "$MAX_ATTEMPTS" ]
+	then
+
+		echo "$NAME: Exceeded $MAX_ATTEMPTS"
+
+		break
+	fi
+
+		# don't sleep the first time through the loop
+	[[ "$COUNT" != "1" ]] && sleep ${SECONDS_BETWEEN_ATTEMPTS}
+
+	# Do whatever you want to do in the 'while' loop here
+	if [ "$#" = "0" ]
+	then
+				# if no input args, send stdin to actual growl
+			cat - | ${GN}
+	else
+			"$GN" $@
+	fi
+
+	EXIT="$?"
+
+	if [ "$EXIT" = "0" ]
+	then
+			# the actual growlnotify exited OK, so we will too
+			exit 0
+	else
+			# growlnotify failed for some reason, which usually means that the
+			# Growl.app is either not running (which shouldn't have happened)
+			# or needs to be restarted. So we'll kill it and try again
+
+			pkill Growl
+
+			sleep 2
+
+			open -a Growl || exit 2
+
+			sleep 2
+	fi
+
+
+done
+
+echo "$0 failed after $MAX_ATTEMPTS to send the following to ${GN}: $@" | open -t -e
+
+exit
+#
+#EOF
